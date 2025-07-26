@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"sync"
+
+	"github.com/rs/cors"
 )
 
 // Flutterから受け取る投票リクエストの形式
@@ -87,12 +89,28 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(voteCounts)
 }
 
+// main関数（修正済み）
 func main() {
-	http.HandleFunc("/vote", voteHandler)
-	http.HandleFunc("/results", resultsHandler)
+	// 新しいルーター(mux)を作成
+	mux := http.NewServeMux()
+
+	// http.HandleFuncではなく、mux.HandleFuncに処理を登録
+	mux.HandleFunc("/vote", voteHandler)
+	mux.HandleFunc("/results", resultsHandler)
+
+	// CORSの設定を作成
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST"},
+	})
+
+	// muxをCORSミドルウェアでラップして、最終的なhandlerを作成
+	handler := c.Handler(mux)
 
 	fmt.Println("Server starting on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+
+	// サーバーの起動時に、nilではなく作成したhandlerを渡す
+	if err := http.ListenAndServe(":8080", handler); err != nil {
 		log.Fatalf("Could not start server: %s\n", err)
 	}
 }
